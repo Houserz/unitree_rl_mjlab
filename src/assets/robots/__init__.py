@@ -2,6 +2,10 @@ from .unitree_go2.go2_constants import (
   get_go2_robot_cfg as get_go2_robot_cfg,
 )
 
+from .dobot.dobot_constants import (
+  get_dobot_robot_cfg as get_dobot_robot_cfg,
+)
+
 from .unitree_a2.a2_constants import (
   get_a2_robot_cfg as get_a2_robot_cfg,
 )
