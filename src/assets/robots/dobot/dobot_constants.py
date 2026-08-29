@@ -34,7 +34,7 @@ DOBOT_FOOT_SITE_NAMES = DOBOT_FOOT_ORDER
 DOBOT_FOOT_GEOM_NAMES = tuple(f"{name}_foot_collision" for name in DOBOT_FOOT_ORDER)
 DOBOT_EFFORT_LIMITS = (23.0, 23.0, 55.0) * 4
 
-DOBOT_TOTAL_MASS = 18.64608
+DOBOT_TOTAL_MASS = 17.2352
 DOBOT_INIT_ROOT_HEIGHT = 0.41
 DOBOT_ACTION_SCALE = 0.25
 DOBOT_PHYSICS_DT = 0.005
@@ -115,16 +115,17 @@ INIT_STATE = EntityCfg.InitialStateCfg(
 # Collision configuration.
 ##
 
-_FOOT_REGEX = "^[FR][LR]_foot_collision$"
-
 # Enable every named primitive collision geom while excluding robot self-collision.
-# The visual meshes are unnamed and therefore disabled by CollisionCfg.
+# The visual meshes are unnamed and therefore disabled by CollisionCfg. Contact
+# impedance, friction and dimensionality follow the Dobot v2 MuJoCo terrain defaults;
+# priority keeps those robot-side values effective against MJLab's terrain geom.
 FULL_COLLISION = CollisionCfg(
   geom_names_expr=(".*_collision",),
-  condim={_FOOT_REGEX: 3, ".*_collision": 1},
-  priority={_FOOT_REGEX: 1},
-  friction={_FOOT_REGEX: (0.6,)},
-  solimp={_FOOT_REGEX: (0.9, 0.95, 0.023)},
+  condim=3,
+  priority=1,
+  friction=(1.8, 0.1, 0.01),
+  solref=(0.02, 1.0),
+  solimp=(0.8, 0.99, 0.001, 0.3, 1.0),
   contype=1,
   conaffinity=0,
 )

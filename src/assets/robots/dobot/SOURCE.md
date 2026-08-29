@@ -18,7 +18,32 @@ Active control parameters come from:
 The referenced `dobot_rl_gym` files were unmodified at copy time. The source repository
 is read-only for this migration.
 
-## Selected dynamics baseline
+## Dobot quad v2 parameter update
+
+The active MJLab asset additionally adopts robot parameters from the local Dobot quad
+v2 package at `/home/houser/下载/dobot_quad_v2`:
+
+- Kinematic hip/thigh offsets, link masses, centers of mass, and inertias come from
+  `urdf/dobot_quad.urdf` and were cross-checked against
+  `mujoco/scene_dobot_quad.xml`.
+- Each fixed `0.05 kg` foot is fused into its `0.377 kg` calf, giving four symmetric
+  `0.427 kg` calf bodies and a total robot mass of `17.2352 kg`. This deliberately
+  avoids the generated v2 MJCF's asymmetric rear-right foot body and duplicated
+  `0.05 kg` mass.
+- The calf collision cylinder remains at radius/half-length `0.02/0.125 m`, centered
+  at local `z=-0.12 m`. The foot sphere changes to radius `0.028 m`, centered at
+  local `z=-0.245 m`; the four MJLab foot sites move with the sphere centers.
+- Contact friction, `solref`, `solimp`, and `condim` follow the v2 MuJoCo terrain
+  defaults: `(1.8, 0.1, 0.01)`, `(0.02, 1)`,
+  `(0.8, 0.99, 0.001, 0.3, 1)`, and `3`, respectively.
+
+The MJLab robot self-collision setting remains unchanged (`contype=1`,
+`conaffinity=0`). The v2 terrain include, torque motors, deployment sensors, ready
+keyframe, `0.002 s` timestep, and solver defaults are not imported. MJLab continues
+to provide terrain, 12 position actuators, task sensors, the existing initial pose,
+`0.005 s` physics timing, and `0.02 s` policy timing.
+
+## Selected control baseline
 
 - Position residual scale: `0.25 rad`
 - Policy/physics timing: `0.02 s / 0.005 s`, decimation `4`

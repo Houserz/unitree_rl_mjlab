@@ -232,3 +232,25 @@ cd deploy/robots/g1/build
 - [mujoco_warp](https://github.com/google-deepmind/mujoco_warp.git): 提供 GPU 加速渲染与仿真接口。
 - [mujoco](https://github.com/google-deepmind/mujoco.git): 提供强大仿真功能。
 
+
+
+
+## 指令
+
+### play
+conda activate unitree_rl_mjlab
+cd /home/houser/code/unitree_all/unitree_rl_mjlab
+
+RUN=logs/rsl_rl/dobot_rover_velocity/2026-08-28_18-15-02_v2_formal_4096e_10001i_seed42
+MODEL=model_10000.pt
+
+python scripts/play.py Dobot-Rover-Flat \
+  --checkpoint-file "$RUN/$MODEL" \
+  --num-envs=1 \
+  --viewer=viser
+
+
+### 曲线
+conda activate unitree_rl_mjlab
+cd /home/houser/code/unitree_all/unitree_rl_mjlab
+tensorboard --logdir logs/rsl_rl/dobot_rover_velocity --port 6006

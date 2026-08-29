@@ -86,6 +86,9 @@ def _dobot_rover_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   ].site_names = site_names
 
   cfg.events["foot_friction"].params["asset_cfg"].geom_names = geom_names
+  # Keep the effective foot friction equal to the Dobot v2 MuJoCo default instead
+  # of applying the shared Unitree task's 0.3--1.6 startup randomization.
+  cfg.events["foot_friction"].params["ranges"] = (1.8, 1.8)
   cfg.events["base_com"].params["asset_cfg"].body_names = ("link_trunk",)
 
   cfg.rewards["pose"].params["std_standing"] = {
