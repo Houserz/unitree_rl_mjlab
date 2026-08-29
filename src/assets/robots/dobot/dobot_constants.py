@@ -37,8 +37,8 @@ DOBOT_EFFORT_LIMITS = (23.0, 23.0, 55.0) * 4
 DOBOT_TOTAL_MASS = 17.2352
 DOBOT_INIT_ROOT_HEIGHT = 0.41
 DOBOT_ACTION_SCALE = 0.25
-DOBOT_PHYSICS_DT = 0.005
-DOBOT_DECIMATION = 4
+DOBOT_PHYSICS_DT = 0.0025
+DOBOT_DECIMATION = 8
 
 ##
 # MJCF and assets.
@@ -124,7 +124,7 @@ FULL_COLLISION = CollisionCfg(
   condim=3,
   priority=1,
   friction=(1.8, 0.1, 0.01),
-  solref=(0.02, 1.0),
+  solref=(0.01, 1.0),
   solimp=(0.8, 0.99, 0.001, 0.3, 1.0),
   contype=1,
   conaffinity=0,

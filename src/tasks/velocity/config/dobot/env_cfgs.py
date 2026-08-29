@@ -12,8 +12,10 @@ from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg
 from src.assets.robots import get_dobot_robot_cfg
 from src.assets.robots.dobot.dobot_constants import (
   DOBOT_ACTION_SCALE,
+  DOBOT_DECIMATION,
   DOBOT_FOOT_GEOM_NAMES,
   DOBOT_FOOT_SITE_NAMES,
+  DOBOT_PHYSICS_DT,
 )
 from src.tasks.velocity.velocity_env_cfg import make_velocity_env_cfg
 
@@ -25,6 +27,11 @@ def _dobot_rover_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   height scan observations and therefore keeps the 47-D actor contract.
   """
   cfg = make_velocity_env_cfg()
+
+  # Case B contact timing: retain a 50 Hz policy period while resolving each
+  # policy interval with eight 2.5 ms physics substeps.
+  cfg.sim.mujoco.timestep = DOBOT_PHYSICS_DT
+  cfg.decimation = DOBOT_DECIMATION
 
   cfg.sim.mujoco.ccd_iterations = 500
   cfg.sim.contact_sensor_maxmatch = 500
@@ -62,7 +69,8 @@ def _dobot_rover_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     fields=("found", "force"),
     reduce="none",
     num_slots=1,
-    history_length=4,
+    # Cover one complete policy interval. Keep synchronized with decimation.
+    history_length=DOBOT_DECIMATION,
   )
   cfg.scene.sensors = (cfg.scene.sensors or ()) + (
     feet_ground_cfg,

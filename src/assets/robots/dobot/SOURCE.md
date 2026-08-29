@@ -33,20 +33,22 @@ v2 package at `/home/houser/下载/dobot_quad_v2`:
 - The calf collision cylinder remains at radius/half-length `0.02/0.125 m`, centered
   at local `z=-0.12 m`. The foot sphere changes to radius `0.028 m`, centered at
   local `z=-0.245 m`; the four MJLab foot sites move with the sphere centers.
-- Contact friction, `solref`, `solimp`, and `condim` follow the v2 MuJoCo terrain
-  defaults: `(1.8, 0.1, 0.01)`, `(0.02, 1)`,
-  `(0.8, 0.99, 0.001, 0.3, 1)`, and `3`, respectively.
+- Contact friction, `solimp`, and `condim` follow the v2 MuJoCo terrain defaults:
+  `(1.8, 0.1, 0.01)`, `(0.8, 0.99, 0.001, 0.3, 1)`, and `3`, respectively.
+  The active Case B setting uses a harder `solref=(0.01, 1)` instead of the v2
+  default `(0.02, 1)`.
 
 The MJLab robot self-collision setting remains unchanged (`contype=1`,
 `conaffinity=0`). The v2 terrain include, torque motors, deployment sensors, ready
 keyframe, `0.002 s` timestep, and solver defaults are not imported. MJLab continues
-to provide terrain, 12 position actuators, task sensors, the existing initial pose,
-`0.005 s` physics timing, and `0.02 s` policy timing.
+to provide terrain, 12 position actuators, task sensors, and the existing initial
+pose. The active Case B timing is `0.0025 s` physics with decimation `8`, preserving
+the `0.02 s` policy period.
 
 ## Selected control baseline
 
 - Position residual scale: `0.25 rad`
-- Policy/physics timing: `0.02 s / 0.005 s`, decimation `4`
+- Policy/physics timing: `0.02 s / 0.0025 s`, decimation `8`
 - PD gains: `Kp=10`, `Kd=1`
 - Effort limits: abad/thigh/calf `23/23/55 Nm`
 - Passive joint damping: `0.02`
