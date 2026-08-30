@@ -119,6 +119,29 @@ def _check_compiled_model() -> None:
 
 def _check_flat_environment(run_step: bool) -> None:
   cfg = dobot_rover_flat_env_cfg(play=False)
+
+  twist_cfg = cfg.commands["twist"]
+  assert twist_cfg.ranges.lin_vel_x == (-0.5, 1.0)
+  assert twist_cfg.ranges.lin_vel_y == (-0.5, 0.5)
+  assert twist_cfg.ranges.ang_vel_z == (-1.0, 1.0)
+  assert cfg.curriculum["command_vel"].params["velocity_stages"] == [
+    {
+      "step": 0,
+      "lin_vel_x": (-0.5, 1.0),
+      "lin_vel_y": (-0.5, 0.5),
+      "ang_vel_z": (-1.0, 1.0),
+    },
+    {"step": 12000, "lin_vel_x": (-0.5, 1.2), "lin_vel_y": (-0.5, 0.5)},
+    {"step": 24000, "lin_vel_x": (-0.5, 1.4), "lin_vel_y": (-0.5, 0.5)},
+    {"step": 36000, "lin_vel_x": (-0.5, 1.6), "lin_vel_y": (-0.5, 0.5)},
+    {"step": 48000, "lin_vel_x": (-0.5, 1.8), "lin_vel_y": (-0.5, 0.5)},
+    {"step": 60000, "lin_vel_x": (-0.5, 2.0), "lin_vel_y": (-0.5, 0.5)},
+    {"step": 84000, "lin_vel_x": (-0.75, 2.0), "lin_vel_y": (-0.5, 0.5)},
+    {"step": 96000, "lin_vel_x": (-1.0, 2.0), "lin_vel_y": (-0.5, 0.5)},
+    {"step": 108000, "lin_vel_x": (-1.0, 2.0), "lin_vel_y": (-0.75, 0.75)},
+    {"step": 120000, "lin_vel_x": (-1.0, 2.0), "lin_vel_y": (-1.0, 1.0)},
+  ]
+
   cfg.scene.num_envs = 1
   cfg.curriculum = {}
   cfg.observations["actor"].enable_corruption = False

@@ -172,9 +172,37 @@ def dobot_rover_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   del cfg.observations["critic"].terms["height_scan"]
   cfg.curriculum.pop("terrain_levels", None)
 
-  if play:
-    twist_cmd = cfg.commands["twist"]
-    assert isinstance(twist_cmd, UniformVelocityCommandCfg)
+  twist_cmd = cfg.commands["twist"]
+  assert isinstance(twist_cmd, UniformVelocityCommandCfg)
+
+  if not play:
+    # Set the initial distribution explicitly. The curriculum runs during reset,
+    # but its step-0 stage is not active while common_step_counter is still zero.
+    twist_cmd.ranges.lin_vel_x = (-0.5, 1.0)
+    twist_cmd.ranges.lin_vel_y = (-0.5, 0.5)
+    twist_cmd.ranges.ang_vel_z = (-1.0, 1.0)
+
+    # Grow one command axis at a time. Fixed-command probes showed that the base
+    # gait is ready by roughly iteration 500, while a single full-range jump at
+    # iteration 5000 drives the policy toward a conservative standing solution.
+    cfg.curriculum["command_vel"].params["velocity_stages"] = [
+      {
+        "step": 0,
+        "lin_vel_x": (-0.5, 1.0),
+        "lin_vel_y": (-0.5, 0.5),
+        "ang_vel_z": (-1.0, 1.0),
+      },
+      {"step": 12000, "lin_vel_x": (-0.5, 1.2), "lin_vel_y": (-0.5, 0.5)},
+      {"step": 24000, "lin_vel_x": (-0.5, 1.4), "lin_vel_y": (-0.5, 0.5)},
+      {"step": 36000, "lin_vel_x": (-0.5, 1.6), "lin_vel_y": (-0.5, 0.5)},
+      {"step": 48000, "lin_vel_x": (-0.5, 1.8), "lin_vel_y": (-0.5, 0.5)},
+      {"step": 60000, "lin_vel_x": (-0.5, 2.0), "lin_vel_y": (-0.5, 0.5)},
+      {"step": 84000, "lin_vel_x": (-0.75, 2.0), "lin_vel_y": (-0.5, 0.5)},
+      {"step": 96000, "lin_vel_x": (-1.0, 2.0), "lin_vel_y": (-0.5, 0.5)},
+      {"step": 108000, "lin_vel_x": (-1.0, 2.0), "lin_vel_y": (-0.75, 0.75)},
+      {"step": 120000, "lin_vel_x": (-1.0, 2.0), "lin_vel_y": (-1.0, 1.0)},
+    ]
+  else:
     twist_cmd.ranges.lin_vel_x = (-0.5, 1.0)
     twist_cmd.ranges.lin_vel_y = (-0.5, 0.5)
     twist_cmd.ranges.ang_vel_z = (-0.5, 0.5)
