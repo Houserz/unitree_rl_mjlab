@@ -343,7 +343,9 @@ class StratifiedVelocityCommand(UniformVelocityCommand):
       if self.cfg.heading_command:
         heading_range = bucket.heading or self.cfg.ranges.heading
         assert heading_range is not None
-        self.heading_target[bucket_env_ids].uniform_(*heading_range)
+        self.heading_target[bucket_env_ids] = torch.empty(
+          len(bucket_env_ids), device=self.device
+        ).uniform_(*heading_range)
         self.is_heading_env[bucket_env_ids] = (
           torch.rand(len(bucket_env_ids), device=self.device)
           <= bucket.rel_heading_envs

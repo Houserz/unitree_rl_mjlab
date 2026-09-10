@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import torch
 import tyro
@@ -36,6 +36,23 @@ SCENARIOS = (
   Scenario("reverse", (-1.0, 0.0, 0.0)),
 )
 
+LATERAL_SCENARIOS = (
+  Scenario("lateral_pos_075", (0.0, 0.75, 0.0)),
+  Scenario("lateral_neg_075", (0.0, -0.75, 0.0)),
+  Scenario("lateral_pos_100", (0.0, 1.0, 0.0)),
+  Scenario("lateral_neg_100", (0.0, -1.0, 0.0)),
+)
+YAW_SCENARIOS = (
+  Scenario("yaw_positive", (0.0, 0.0, 0.5)),
+  Scenario("yaw_negative", (0.0, 0.0, -0.5)),
+)
+SUITES = {
+  "core": SCENARIOS,
+  "lateral": LATERAL_SCENARIOS,
+  "yaw": YAW_SCENARIOS,
+  "all": SCENARIOS + LATERAL_SCENARIOS + YAW_SCENARIOS,
+}
+
 
 @dataclass(frozen=True)
 class EvaluateConfig:
@@ -43,6 +60,7 @@ class EvaluateConfig:
   """Local checkpoint to evaluate."""
 
   task_id: str = "Dobot-Rover-Flat"
+  suite: Literal["core", "lateral", "yaw", "all"] = "core"
   num_envs: int = 64
   duration_s: float = 10.0
   settle_s: float = 2.0
@@ -107,6 +125,8 @@ def _evaluate_scenario(
   done_once = torch.zeros(cfg.num_envs, dtype=torch.bool, device=device)
   velocity_sum = torch.zeros(3, device=device)
   xy_error_sum = torch.zeros((), device=device)
+  yaw_sum = torch.zeros((), device=device)
+  yaw_error_sum = torch.zeros((), device=device)
   sample_count = 0
   fell_over_count = 0
   illegal_contact_count = 0
@@ -136,6 +156,9 @@ def _evaluate_scenario(
         actual = robot.data.root_link_lin_vel_b[:, :3]
         velocity_sum += actual[active].sum(dim=0)
         xy_error_sum += torch.norm(actual[active, :2] - command[:2], dim=1).sum()
+        actual_yaw = robot.data.root_link_ang_vel_b[active, 2]
+        yaw_sum += actual_yaw.sum()
+        yaw_error_sum += torch.abs(actual_yaw - command[2]).sum()
         sample_count += int(torch.count_nonzero(active).item())
 
       _force_command(command_term, command)
@@ -151,6 +174,8 @@ def _evaluate_scenario(
     "mean_vy": float((velocity_sum[1] / denominator).item()),
     "mean_vz": float((velocity_sum[2] / denominator).item()),
     "mean_xy_error": float((xy_error_sum / denominator).item()),
+    "mean_wz": float((yaw_sum / denominator).item()),
+    "mean_abs_wz_error": float((yaw_error_sum / denominator).item()),
     "survival_rate": float((~done_once).float().mean().item()),
     "fell_over_count": fell_over_count,
     "illegal_contact_count": illegal_contact_count,
@@ -173,7 +198,7 @@ def run_evaluate(cfg: EvaluateConfig) -> list[dict[str, float | int | str]]:
   device = cfg.device or ("cuda:0" if torch.cuda.is_available() else "cpu")
   results: list[dict[str, float | int | str]] = []
   for seed in cfg.seeds:
-    for scenario in SCENARIOS:
+    for scenario in SUITES[cfg.suite]:
       result = _evaluate_scenario(
         task_id=cfg.task_id,
         checkpoint=checkpoint,
@@ -187,6 +212,7 @@ def run_evaluate(cfg: EvaluateConfig) -> list[dict[str, float | int | str]]:
         f"[RESULT] seed={seed} scenario={scenario.name} "
         f"v=({result['mean_vx']:.3f}, {result['mean_vy']:.3f}) "
         f"e_xy={result['mean_xy_error']:.3f} "
+        f"wz={result['mean_wz']:.3f} e_wz={result['mean_abs_wz_error']:.3f} "
         f"survival={result['survival_rate']:.3f} "
         f"fall={result['fell_over_count']} illegal={result['illegal_contact_count']}"
       )

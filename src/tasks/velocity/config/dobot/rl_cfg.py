@@ -57,7 +57,11 @@ def dobot_rover_kp25_kd13_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
   """
 
   cfg = dobot_rover_ppo_runner_cfg()
-  cfg.run_name = "kp25_kd1p3_std0p4_scratch"
+  cfg.run_name = "kp25_kd1p3_scratch_v1"
+  # Match the completed seed-42 baseline, ending at model_4500.
+  cfg.seed = 42
+  cfg.resume = False
+  cfg.max_iterations = 4501
   cfg.logger = "tensorboard"
   cfg.upload_model = False
   cfg.save_interval = 50
@@ -70,9 +74,9 @@ def dobot_rover_kp25_kd13_lateral_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
   """Fresh-optimizer continuation settings for lateral range expansion."""
 
   cfg = dobot_rover_kp25_kd13_ppo_runner_cfg()
-  cfg.max_iterations = 1500
+  cfg.max_iterations = 1800
   cfg.save_interval = 50
-  cfg.run_name = "kp25_kd1p3_lateral_from_model4500"
+  cfg.run_name = "kp25_kd1p3_lateral_v2"
   # The current policy already walks.  Keep updates conservative while the
   # command distribution changes, and warm-start actor/critic only.
   cfg.algorithm.learning_rate = 2.5e-4

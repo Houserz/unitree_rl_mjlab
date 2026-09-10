@@ -216,22 +216,32 @@ def dobot_rover_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
 
 
 def dobot_rover_flat_kp25_kd13_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
-  """Current flat velocity task with 25/1.3 position-PD actuators only."""
+  """From-scratch 25/1.3 baseline; retain lateral range at ±0.75.
+
+  The 4501-iteration historical run never reached the final ±1.0 stage.
+  Remove that unused stage in v1 so a longer run cannot enter it silently.
+  """
 
   cfg = dobot_rover_flat_env_cfg(play=play)
   cfg.scene.entities = {
     "robot": get_dobot_robot_cfg(stiffness=25.0, damping=1.3)
   }
+  if not play:
+    cfg.scene.num_envs = 4096
+    stages = cfg.curriculum["command_vel"].params["velocity_stages"]
+    cfg.curriculum["command_vel"].params["velocity_stages"] = [
+      stage for stage in stages if stage["step"] < 120000
+    ]
   return cfg
 
 
 def dobot_rover_flat_kp25_kd13_lateral_curriculum_env_cfg(
   play: bool = False,
 ) -> ManagerBasedRlEnvCfg:
-  """Kp25 continuation curriculum that grows lateral range without forward loss.
+  """Kp25 continuation curriculum with dedicated forward-retention buckets.
 
   The policy is warm-started from the Kp25 ``model_4500`` checkpoint, whose
-  stable lateral extent is ``±0.75``.  New optimizer state starts at that
+  training range reached ``±0.75``.  New optimizer state starts at that
   distribution, then widens only the dedicated lateral bucket every 500 PPO
   iterations.  Dedicated medium/high-forward buckets are never diluted.
   """
