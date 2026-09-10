@@ -1,0 +1,585 @@
+[
+  {
+    "name": "kp10_reference",
+    "task_id": "Dobot-Rover-Flat",
+    "run": "logs/rsl_rl/dobot_rover_velocity/2026-08-30_21-41-32_case_b_gradual_curriculum_4096e_6501i_seed42",
+    "checkpoint": "model_4500.pt",
+    "hardware_ready": false,
+    "source_note": "Historical run before cleanup; saved source diff and YAML are authoritative. Current defaults are documented separately.",
+    "saved_agent": {
+      "seed": "42",
+      "num_steps_per_env": "24",
+      "max_iterations": "6501",
+      "obs_groups": {
+        "actor": [
+          "actor"
+        ],
+        "critic": [
+          "critic"
+        ]
+      },
+      "save_interval": "50",
+      "experiment_name": "dobot_rover_velocity",
+      "run_name": "case_b_gradual_curriculum_4096e_6501i_seed42",
+      "logger": "tensorboard",
+      "wandb_project": "mjlab",
+      "wandb_tags": [],
+      "resume": "false",
+      "load_run": ".*",
+      "load_checkpoint": "model_.*.pt",
+      "clip_actions": "100.0",
+      "upload_model": "false",
+      "class_name": "OnPolicyRunner",
+      "actor": {
+        "hidden_dims": [
+          "512",
+          "256",
+          "128"
+        ],
+        "activation": "elu",
+        "obs_normalization": "true",
+        "distribution_cfg": {
+          "init_std": "1.0",
+          "std_type": "scalar"
+        }
+      },
+      "critic": {
+        "hidden_dims": [
+          "512",
+          "256",
+          "128"
+        ],
+        "activation": "elu",
+        "obs_normalization": "true"
+      },
+      "algorithm": {
+        "num_learning_epochs": "5",
+        "num_mini_batches": "4",
+        "learning_rate": "0.001",
+        "schedule": "adaptive",
+        "gamma": "0.99",
+        "lam": "0.95",
+        "entropy_coef": "0.01",
+        "desired_kl": "0.01",
+        "max_grad_norm": "1.0",
+        "value_loss_coef": "1.0",
+        "use_clipped_value_loss": "true",
+        "clip_param": "0.2",
+        "normalize_advantage_per_mini_batch": "false",
+        "optimizer": "adam",
+        "rnd_cfg": "null",
+        "symmetry_cfg": "null"
+      },
+      "multi_gpu": "null"
+    },
+    "saved_curriculum": {
+      "command_vel": {
+        "func": "",
+        "params": {
+          "command_name": "twist",
+          "velocity_stages": [
+            {
+              "step": "0",
+              "lin_vel_x": [
+                "-0.5",
+                "1.0"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ],
+              "ang_vel_z": [
+                "-1.0",
+                "1.0"
+              ]
+            },
+            {
+              "step": "12000",
+              "lin_vel_x": [
+                "-0.5",
+                "1.2"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "24000",
+              "lin_vel_x": [
+                "-0.5",
+                "1.4"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "36000",
+              "lin_vel_x": [
+                "-0.5",
+                "1.6"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "48000",
+              "lin_vel_x": [
+                "-0.5",
+                "1.8"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "60000",
+              "lin_vel_x": [
+                "-0.5",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "84000",
+              "lin_vel_x": [
+                "-0.75",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "96000",
+              "lin_vel_x": [
+                "-1.0",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "108000",
+              "lin_vel_x": [
+                "-1.0",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-0.75",
+                "0.75"
+              ]
+            },
+            {
+              "step": "120000",
+              "lin_vel_x": [
+                "-1.0",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-1.0",
+                "1.0"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "files": [
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-08-30_21-41-32_case_b_gradual_curriculum_4096e_6501i_seed42/model_4500.pt",
+        "sha256": "6651f301bb4230d88c8c2ed881bcc04944dff5ad1f88ae49ae29f118a3e247e8"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-08-30_21-41-32_case_b_gradual_curriculum_4096e_6501i_seed42/params/agent.yaml",
+        "sha256": "1e31c57338a2b2153f2c72e95eb5589b449fdd7b818ff888dda3b94e7dc9b4ac"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-08-30_21-41-32_case_b_gradual_curriculum_4096e_6501i_seed42/params/env.yaml",
+        "sha256": "3bd7dc9f77c06d262857869be4686d2e6ce22cfbbbef02230597f858bbeb0b14"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-08-30_21-41-32_case_b_gradual_curriculum_4096e_6501i_seed42/git/unitree_rl_mjlab.diff",
+        "sha256": "428d2a4a6c9f39af4c9aab8d02e6e69786cfe30dc467893998dfe815efee709f"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-02_12-24-12_high_speed_retention_from_model4500/eval_model_0_3seed_10s.json",
+        "sha256": "5d7b590637ca603d408660ffed0e154b50d7db1353969e1447e6fbd1409708ce"
+      }
+    ],
+    "source_commit": "5051a99ac9503a96e248320e31f79038e7781dfa",
+    "evaluation_note": "Three-seed core comparison uses the historical warm-start model_0, not a new evaluation of the original checkpoint."
+  },
+  {
+    "name": "kp25_scratch_reference",
+    "task_id": "Dobot-Rover-Flat-Kp25Kd1p3",
+    "run": "logs/rsl_rl/dobot_rover_velocity/2026-09-04_15-56-33_kp25_kd1p3_std0p4_scratch",
+    "checkpoint": "model_4500.pt",
+    "hardware_ready": false,
+    "source_note": "Historical run before cleanup; saved source diff and YAML are authoritative. Current defaults are documented separately.",
+    "saved_agent": {
+      "seed": "42",
+      "num_steps_per_env": "24",
+      "max_iterations": "4501",
+      "obs_groups": {
+        "actor": [
+          "actor"
+        ],
+        "critic": [
+          "critic"
+        ]
+      },
+      "save_interval": "50",
+      "experiment_name": "dobot_rover_velocity",
+      "run_name": "kp25_kd1p3_std0p4_scratch",
+      "logger": "tensorboard",
+      "wandb_project": "mjlab",
+      "wandb_tags": [],
+      "resume": "false",
+      "load_run": ".*",
+      "load_checkpoint": "model_.*.pt",
+      "clip_actions": "100.0",
+      "upload_model": "false",
+      "class_name": "OnPolicyRunner",
+      "actor": {
+        "hidden_dims": [
+          "512",
+          "256",
+          "128"
+        ],
+        "activation": "elu",
+        "obs_normalization": "true",
+        "distribution_cfg": {
+          "init_std": "0.4",
+          "std_type": "scalar"
+        }
+      },
+      "critic": {
+        "hidden_dims": [
+          "512",
+          "256",
+          "128"
+        ],
+        "activation": "elu",
+        "obs_normalization": "true"
+      },
+      "algorithm": {
+        "num_learning_epochs": "5",
+        "num_mini_batches": "4",
+        "learning_rate": "0.001",
+        "schedule": "adaptive",
+        "gamma": "0.99",
+        "lam": "0.95",
+        "entropy_coef": "0.01",
+        "desired_kl": "0.01",
+        "max_grad_norm": "1.0",
+        "value_loss_coef": "1.0",
+        "use_clipped_value_loss": "true",
+        "clip_param": "0.2",
+        "normalize_advantage_per_mini_batch": "false",
+        "optimizer": "adam",
+        "rnd_cfg": "null",
+        "symmetry_cfg": "null"
+      },
+      "multi_gpu": "null"
+    },
+    "saved_curriculum": {
+      "command_vel": {
+        "func": "",
+        "params": {
+          "command_name": "twist",
+          "velocity_stages": [
+            {
+              "step": "0",
+              "lin_vel_x": [
+                "-0.5",
+                "1.0"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ],
+              "ang_vel_z": [
+                "-1.0",
+                "1.0"
+              ]
+            },
+            {
+              "step": "12000",
+              "lin_vel_x": [
+                "-0.5",
+                "1.2"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "24000",
+              "lin_vel_x": [
+                "-0.5",
+                "1.4"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "36000",
+              "lin_vel_x": [
+                "-0.5",
+                "1.6"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "48000",
+              "lin_vel_x": [
+                "-0.5",
+                "1.8"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "60000",
+              "lin_vel_x": [
+                "-0.5",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "84000",
+              "lin_vel_x": [
+                "-0.75",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "96000",
+              "lin_vel_x": [
+                "-1.0",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-0.5",
+                "0.5"
+              ]
+            },
+            {
+              "step": "108000",
+              "lin_vel_x": [
+                "-1.0",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-0.75",
+                "0.75"
+              ]
+            },
+            {
+              "step": "120000",
+              "lin_vel_x": [
+                "-1.0",
+                "2.0"
+              ],
+              "lin_vel_y": [
+                "-1.0",
+                "1.0"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "files": [
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-04_15-56-33_kp25_kd1p3_std0p4_scratch/model_4500.pt",
+        "sha256": "0d5a6f579b7d2980763ec365531bc43a81d73e9074c3312baef751e3a33a1f1e"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-04_15-56-33_kp25_kd1p3_std0p4_scratch/params/agent.yaml",
+        "sha256": "d19d4e268754dab67a409dad37cec04b154df1e78c172b50b4c57ccee240273c"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-04_15-56-33_kp25_kd1p3_std0p4_scratch/params/env.yaml",
+        "sha256": "8b34367d2d3fe3ff10ac766fae2ad17b1a0e0195a9f07a4f6dbfe1491f16c100"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-04_15-56-33_kp25_kd1p3_std0p4_scratch/git/unitree_rl_mjlab.diff",
+        "sha256": "030a127a0db0d16a01eeb366ef1189ce428d3474f99713a903fb4b12e0709ed4"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-04_15-56-33_kp25_kd1p3_std0p4_scratch/eval_model_4500_3seed_10s.json",
+        "sha256": "96e8b13677b5a4a782cca7de7a8dba6cb9ef719e7c0f3902b925584b4d77232e"
+      }
+    ],
+    "source_commit": "5051a99ac9503a96e248320e31f79038e7781dfa"
+  },
+  {
+    "name": "kp25_lateral_candidate",
+    "task_id": "Dobot-Rover-Flat-Kp25Kd1p3-LateralCurriculum",
+    "run": "logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500",
+    "checkpoint": "model_1799.pt",
+    "hardware_ready": false,
+    "source_note": "Historical run before cleanup; saved source diff and YAML are authoritative. Current defaults are documented separately.",
+    "saved_agent": {
+      "seed": "42",
+      "num_steps_per_env": "24",
+      "max_iterations": "1800",
+      "obs_groups": {
+        "actor": [
+          "actor"
+        ],
+        "critic": [
+          "critic"
+        ]
+      },
+      "save_interval": "50",
+      "experiment_name": "dobot_rover_velocity",
+      "run_name": "kp25_kd1p3_lateral_from_model4500",
+      "logger": "tensorboard",
+      "wandb_project": "mjlab",
+      "wandb_tags": [],
+      "resume": "false",
+      "load_run": ".*",
+      "load_checkpoint": "model_.*.pt",
+      "clip_actions": "100.0",
+      "upload_model": "false",
+      "class_name": "OnPolicyRunner",
+      "actor": {
+        "hidden_dims": [
+          "512",
+          "256",
+          "128"
+        ],
+        "activation": "elu",
+        "obs_normalization": "true",
+        "distribution_cfg": {
+          "init_std": "0.4",
+          "std_type": "scalar"
+        }
+      },
+      "critic": {
+        "hidden_dims": [
+          "512",
+          "256",
+          "128"
+        ],
+        "activation": "elu",
+        "obs_normalization": "true"
+      },
+      "algorithm": {
+        "num_learning_epochs": "5",
+        "num_mini_batches": "4",
+        "learning_rate": "0.00025",
+        "schedule": "adaptive",
+        "gamma": "0.99",
+        "lam": "0.95",
+        "entropy_coef": "0.01",
+        "desired_kl": "0.01",
+        "max_grad_norm": "1.0",
+        "value_loss_coef": "1.0",
+        "use_clipped_value_loss": "true",
+        "clip_param": "0.2",
+        "normalize_advantage_per_mini_batch": "false",
+        "optimizer": "adam",
+        "rnd_cfg": "null",
+        "symmetry_cfg": "null"
+      },
+      "multi_gpu": "null"
+    },
+    "saved_curriculum": {
+      "lateral_range": {
+        "func": "",
+        "params": {
+          "command_name": "twist",
+          "lateral_bucket_index": "2",
+          "stages": [
+            {
+              "step": "0",
+              "lin_vel_y": [
+                "-0.75",
+                "0.75"
+              ]
+            },
+            {
+              "step": "12000",
+              "lin_vel_y": [
+                "-0.85",
+                "0.85"
+              ]
+            },
+            {
+              "step": "24000",
+              "lin_vel_y": [
+                "-0.95",
+                "0.95"
+              ]
+            },
+            {
+              "step": "36000",
+              "lin_vel_y": [
+                "-1.0",
+                "1.0"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "files": [
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500/model_1799.pt",
+        "sha256": "0989c4dd400c607ef9825d7b7bb4e5ad08f195c60b3544599b482a716cf39292"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500/params/agent.yaml",
+        "sha256": "31326714b87d909a21061a18e844ca121c38ce5294ab3222a8e2ff3993c1b62d"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500/params/env.yaml",
+        "sha256": "515ce993892b7fe86b0f901cd17aab0ff41204840071f05671226ef9719acd3b"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500/git/unitree_rl_mjlab.diff",
+        "sha256": "6b371fbbb80127708a8ed5938efc7d3359c16d95d713c51875532ae8caee073d"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500/eval_lateral_targets_model1799_3seed_10s.json",
+        "sha256": "aa7b9c935f8d1e039f59b7b633a6ac17b0bf1b74e27d4508451897c85fc54fda"
+      },
+      {
+        "path": "logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500/eval_model_1799_3seed_10s.json",
+        "sha256": "37bf0dc93dbf1ee4e578b7fddbd0a77c1caa849b14298202142da63cb7909e7e"
+      }
+    ],
+    "source_commit": "5051a99ac9503a96e248320e31f79038e7781dfa"
+  }
+]

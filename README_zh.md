@@ -235,22 +235,16 @@ cd deploy/robots/g1/build
 
 
 
-## 指令
+## Dobot 训练
 
-### play
+完整任务、课程表、历史模型和统一评估命令见 [Dobot 训练说明](docs/dobot_training.md)。
+
+Kp25/Kd1.3 从零训练（不需要 checkpoint，默认 4096 环境、4501 轮）：
+
+```bash
 conda activate unitree_rl_mjlab
-cd /home/houser/code/unitree_all/unitree_rl_mjlab
+python scripts/train.py Dobot-Rover-Flat-Kp25Kd1p3 --enable-nan-guard True
+```
 
-RUN=logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500
-MODEL=model_1799.pt
-
-python scripts/play.py Dobot-Rover-Flat-Kp25Kd1p3-LateralCurriculum \
-  --checkpoint-file "$RUN/$MODEL" \
-  --num-envs=4 \
-  --viewer=viser
-
-
-### 曲线
-conda activate unitree_rl_mjlab
-cd /home/houser/code/unitree_all/unitree_rl_mjlab
-tensorboard --logdir logs/rsl_rl/dobot_rover_velocity --port 6006
+另外保留 `Dobot-Rover-Flat`（Kp10 历史对照）和
+`Dobot-Rover-Flat-Kp25Kd1p3-LateralCurriculum`（Kp25 横移续训）。
