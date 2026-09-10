@@ -3,11 +3,10 @@
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs import mdp as envs_mdp
 from mjlab.envs.mdp.actions import JointPositionActionCfg
-from mjlab.managers import TerminationTermCfg
+from mjlab.managers import CurriculumTermCfg, RewardTermCfg, TerminationTermCfg
 from mjlab.managers.event_manager import EventTermCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg, RayCastSensorCfg
-from mjlab.tasks.velocity import mdp
-from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg
+from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg as MjlabUniformVelocityCommandCfg
 
 from src.assets.robots import get_dobot_robot_cfg
 from src.assets.robots.dobot.dobot_constants import (
@@ -17,6 +16,12 @@ from src.assets.robots.dobot.dobot_constants import (
   DOBOT_FOOT_SITE_NAMES,
   DOBOT_PHYSICS_DT,
 )
+from src.tasks.velocity.mdp import (
+  StratifiedVelocityCommandCfg,
+  UniformVelocityCommandCfg as LocalUniformVelocityCommandCfg,
+  VelocityCommandBucket,
+)
+import src.tasks.velocity.mdp as mdp
 from src.tasks.velocity.velocity_env_cfg import make_velocity_env_cfg
 
 
@@ -173,7 +178,7 @@ def dobot_rover_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   cfg.curriculum.pop("terrain_levels", None)
 
   twist_cmd = cfg.commands["twist"]
-  assert isinstance(twist_cmd, UniformVelocityCommandCfg)
+  assert isinstance(twist_cmd, MjlabUniformVelocityCommandCfg)
 
   if not play:
     # Set the initial distribution explicitly. The curriculum runs during reset,
@@ -207,4 +212,271 @@ def dobot_rover_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
     twist_cmd.ranges.lin_vel_y = (-0.5, 0.5)
     twist_cmd.ranges.ang_vel_z = (-0.5, 0.5)
 
+  return cfg
+
+
+def dobot_rover_flat_kp25_kd13_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
+  """Current flat velocity task with 25/1.3 position-PD actuators only."""
+
+  cfg = dobot_rover_flat_env_cfg(play=play)
+  cfg.scene.entities = {
+    "robot": get_dobot_robot_cfg(stiffness=25.0, damping=1.3)
+  }
+  return cfg
+
+
+def dobot_rover_flat_kp25_kd13_lateral_curriculum_env_cfg(
+  play: bool = False,
+) -> ManagerBasedRlEnvCfg:
+  """Kp25 continuation curriculum that grows lateral range without forward loss.
+
+  The policy is warm-started from the Kp25 ``model_4500`` checkpoint, whose
+  stable lateral extent is ``±0.75``.  New optimizer state starts at that
+  distribution, then widens only the dedicated lateral bucket every 500 PPO
+  iterations.  Dedicated medium/high-forward buckets are never diluted.
+  """
+
+  cfg = dobot_rover_flat_kp25_kd13_env_cfg(play=play)
+  initial_lateral = 1.0 if play else 0.75
+  cfg.commands["twist"] = StratifiedVelocityCommandCfg(
+    entity_name="robot",
+    resampling_time_range=(3.0, 8.0),
+    rel_standing_envs=0.05,
+    heading_command=True,
+    heading_control_stiffness=0.5,
+    ranges=LocalUniformVelocityCommandCfg.Ranges(
+      lin_vel_x=(-1.0, 2.0),
+      lin_vel_y=(-1.0, 1.0),
+      ang_vel_z=(-1.0, 1.0),
+      heading=(-3.141592653589793, 3.141592653589793),
+    ),
+    buckets=(
+      # Forward retention: 50% of command samples remain nearly straight.
+      VelocityCommandBucket(
+        weight=0.30,
+        lin_vel_x=(1.4, 2.0),
+        lin_vel_y=(-0.10, 0.10),
+        ang_vel_z=(-0.15, 0.15),
+        rel_heading_envs=0.10,
+      ),
+      VelocityCommandBucket(
+        weight=0.20,
+        lin_vel_x=(0.5, 1.4),
+        lin_vel_y=(-0.10, 0.10),
+        ang_vel_z=(-0.20, 0.20),
+        rel_heading_envs=0.20,
+      ),
+      # This is the only bucket widened by the lateral curriculum below.
+      VelocityCommandBucket(
+        weight=0.20,
+        lin_vel_x=(-0.40, 0.80),
+        lin_vel_y=(-initial_lateral, initial_lateral),
+        ang_vel_z=(-0.30, 0.30),
+        rel_heading_envs=0.20,
+      ),
+      VelocityCommandBucket(
+        weight=0.10,
+        lin_vel_x=(0.50, 1.40),
+        lin_vel_y=(-0.35, 0.35),
+        ang_vel_z=(-0.60, 0.60),
+        rel_heading_envs=0.75,
+      ),
+      VelocityCommandBucket(
+        weight=0.10,
+        lin_vel_x=(-1.0, -0.25),
+        lin_vel_y=(-0.20, 0.20),
+        ang_vel_z=(-0.40, 0.40),
+        rel_heading_envs=0.25,
+      ),
+      VelocityCommandBucket(
+        weight=0.10,
+        lin_vel_x=(-0.25, 1.0),
+        lin_vel_y=(-0.15, 0.15),
+        ang_vel_z=(-1.0, 1.0),
+        rel_heading_envs=1.0,
+      ),
+    ),
+  )
+  if not play:
+    # ``common_step_counter`` advances once per environment step: 12,000 steps
+    # equal 500 PPO iterations with this run's 24 rollout steps per iteration.
+    cfg.curriculum = {
+      "lateral_range": CurriculumTermCfg(
+        func=mdp.stratified_lateral_range,
+        params={
+          "command_name": "twist",
+          "lateral_bucket_index": 2,
+          "stages": [
+            {"step": 0, "lin_vel_y": (-0.75, 0.75)},
+            {"step": 12000, "lin_vel_y": (-0.85, 0.85)},
+            {"step": 24000, "lin_vel_y": (-0.95, 0.95)},
+            {"step": 36000, "lin_vel_y": (-1.0, 1.0)},
+          ],
+        },
+      )
+    }
+  else:
+    cfg.curriculum = {}
+  return cfg
+
+
+def dobot_rover_flat_high_speed_retention_env_cfg(
+  play: bool = False,
+) -> ManagerBasedRlEnvCfg:
+  """Flat task with explicit medium/high forward-gait retention.
+
+  This is separate from ``Dobot-Rover-Flat`` so the original gradual-curriculum
+  result remains a reproducible baseline.  The actor, critic, actions, reward,
+  physics, and termination semantics are identical; only command sampling is
+  changed.
+  """
+
+  cfg = dobot_rover_flat_env_cfg(play=play)
+  cfg.commands["twist"] = StratifiedVelocityCommandCfg(
+    entity_name="robot",
+    resampling_time_range=(3.0, 8.0),
+    rel_standing_envs=0.05,
+    heading_command=True,
+    heading_control_stiffness=0.5,
+    ranges=LocalUniformVelocityCommandCfg.Ranges(
+      lin_vel_x=(-1.0, 2.0),
+      lin_vel_y=(-0.75, 0.75),
+      ang_vel_z=(-1.0, 1.0),
+      heading=(-3.141592653589793, 3.141592653589793),
+    ),
+    buckets=(
+      # At least half of non-standing samples preserve straight medium/high
+      # running.  Limited heading probability prevents those samples from
+      # being silently converted into aggressive turning exercises.
+      VelocityCommandBucket(
+        weight=0.25,
+        lin_vel_x=(0.5, 1.4),
+        lin_vel_y=(-0.10, 0.10),
+        ang_vel_z=(-0.20, 0.20),
+        rel_heading_envs=0.20,
+      ),
+      VelocityCommandBucket(
+        weight=0.25,
+        lin_vel_x=(1.4, 2.0),
+        lin_vel_y=(-0.10, 0.10),
+        ang_vel_z=(-0.15, 0.15),
+        rel_heading_envs=0.10,
+      ),
+      # General velocity coverage remains present, but cannot dilute the two
+      # forward buckets as a single wide uniform box did.
+      VelocityCommandBucket(
+        weight=0.15,
+        lin_vel_x=(0.5, 1.6),
+        lin_vel_y=(-0.35, 0.35),
+        ang_vel_z=(-0.60, 0.60),
+        rel_heading_envs=0.75,
+      ),
+      VelocityCommandBucket(
+        weight=0.10,
+        lin_vel_x=(-1.0, -0.25),
+        lin_vel_y=(-0.20, 0.20),
+        ang_vel_z=(-0.40, 0.40),
+        rel_heading_envs=0.25,
+      ),
+      VelocityCommandBucket(
+        weight=0.10,
+        lin_vel_x=(-0.40, 0.90),
+        lin_vel_y=(-0.75, 0.75),
+        ang_vel_z=(-0.30, 0.30),
+        rel_heading_envs=0.20,
+      ),
+      VelocityCommandBucket(
+        weight=0.10,
+        lin_vel_x=(-0.25, 1.0),
+        lin_vel_y=(-0.15, 0.15),
+        ang_vel_z=(-1.0, 1.0),
+        rel_heading_envs=1.0,
+      ),
+    ),
+  )
+  # The bucketed distribution is the retention curriculum.  Reapplying the
+  # original range-expansion schedule would reintroduce its distribution shift.
+  if not play:
+    cfg.curriculum = {}
+
+  return cfg
+
+
+def dobot_rover_flat_high_speed_safe_retention_env_cfg(
+  play: bool = False,
+) -> ManagerBasedRlEnvCfg:
+  """Retention task with a smooth high-speed lower-leg contact cost."""
+
+  cfg = dobot_rover_flat_high_speed_retention_env_cfg(play=play)
+  cfg.rewards["high_speed_nonfoot_contact"] = RewardTermCfg(
+    func=mdp.high_speed_nonfoot_contact,
+    weight=-5.0,
+    params={
+      "sensor_name": "nonfoot_ground_touch",
+      "command_name": "twist",
+      "min_forward_speed": 1.4,
+      # Termination remains at 10 N.  Penalize the force trajectory from 2.5 N
+      # onward so the policy receives a useful gradient before the reset.
+      "free_force_threshold": 2.5,
+      "force_scale": 10.0,
+    },
+  )
+  return cfg
+
+
+def dobot_rover_flat_high_speed_balanced_retention_env_cfg(
+  play: bool = False,
+) -> ManagerBasedRlEnvCfg:
+  """Contact-safe retention with additional medium-forward coverage."""
+
+  cfg = dobot_rover_flat_high_speed_safe_retention_env_cfg(play=play)
+  command_cfg = cfg.commands["twist"]
+  assert isinstance(command_cfg, StratifiedVelocityCommandCfg)
+  command_cfg.buckets = (
+    # Compared with the safe-retention A/B, shift exactly 10 percentage points
+    # from high forward to medium forward.  All ranges and safety shaping are
+    # unchanged, so the experiment isolates coverage rather than reward scale.
+    VelocityCommandBucket(
+      weight=0.35,
+      lin_vel_x=(0.5, 1.4),
+      lin_vel_y=(-0.10, 0.10),
+      ang_vel_z=(-0.20, 0.20),
+      rel_heading_envs=0.20,
+    ),
+    VelocityCommandBucket(
+      weight=0.20,
+      lin_vel_x=(1.4, 2.0),
+      lin_vel_y=(-0.10, 0.10),
+      ang_vel_z=(-0.15, 0.15),
+      rel_heading_envs=0.10,
+    ),
+    VelocityCommandBucket(
+      weight=0.15,
+      lin_vel_x=(0.5, 1.6),
+      lin_vel_y=(-0.35, 0.35),
+      ang_vel_z=(-0.60, 0.60),
+      rel_heading_envs=0.75,
+    ),
+    VelocityCommandBucket(
+      weight=0.10,
+      lin_vel_x=(-1.0, -0.25),
+      lin_vel_y=(-0.20, 0.20),
+      ang_vel_z=(-0.40, 0.40),
+      rel_heading_envs=0.25,
+    ),
+    VelocityCommandBucket(
+      weight=0.10,
+      lin_vel_x=(-0.40, 0.90),
+      lin_vel_y=(-0.75, 0.75),
+      ang_vel_z=(-0.30, 0.30),
+      rel_heading_envs=0.20,
+    ),
+    VelocityCommandBucket(
+      weight=0.10,
+      lin_vel_x=(-0.25, 1.0),
+      lin_vel_y=(-0.15, 0.15),
+      ang_vel_z=(-1.0, 1.0),
+      rel_heading_envs=1.0,
+    ),
+  )
   return cfg

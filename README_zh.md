@@ -241,12 +241,12 @@ cd deploy/robots/g1/build
 conda activate unitree_rl_mjlab
 cd /home/houser/code/unitree_all/unitree_rl_mjlab
 
-RUN=logs/rsl_rl/dobot_rover_velocity/2026-08-28_18-15-02_v2_formal_4096e_10001i_seed42
-MODEL=model_10000.pt
+RUN=logs/rsl_rl/dobot_rover_velocity/2026-09-06_22-54-30_kp25_kd1p3_lateral_from_model4500
+MODEL=model_1799.pt
 
-python scripts/play.py Dobot-Rover-Flat \
+python scripts/play.py Dobot-Rover-Flat-Kp25Kd1p3-LateralCurriculum \
   --checkpoint-file "$RUN/$MODEL" \
-  --num-envs=1 \
+  --num-envs=4 \
   --viewer=viser
 
 

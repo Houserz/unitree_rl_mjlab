@@ -1,5 +1,6 @@
 """Dobot Rover constants and MJLab entity configuration."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import mujoco
@@ -144,11 +145,34 @@ DOBOT_ARTICULATION = EntityArticulationInfoCfg(
 )
 
 
-def get_dobot_robot_cfg() -> EntityCfg:
-  """Return a fresh Dobot Rover robot configuration."""
+def get_dobot_robot_cfg(
+  *,
+  stiffness: float | None = None,
+  damping: float | None = None,
+) -> EntityCfg:
+  """Return a fresh Dobot Rover configuration, optionally with one PD pair.
+
+  The default preserves the established 10/1 actuator baseline.  Supplying a
+  pair creates fresh actuator configuration objects, so a PD experiment cannot
+  mutate the baseline task through the module-level articulation singleton.
+  """
+
+  articulation = DOBOT_ARTICULATION
+  if stiffness is not None or damping is not None:
+    if stiffness is None or damping is None:
+      raise ValueError("stiffness and damping must be supplied together")
+    if stiffness <= 0.0 or damping < 0.0:
+      raise ValueError("stiffness must be positive and damping must be nonnegative")
+    articulation = replace(
+      DOBOT_ARTICULATION,
+      actuators=tuple(
+        replace(actuator, stiffness=stiffness, damping=damping)
+        for actuator in DOBOT_ARTICULATION.actuators
+      ),
+    )
   return EntityCfg(
     init_state=INIT_STATE,
     collisions=(FULL_COLLISION,),
     spec_fn=get_spec,
-    articulation=DOBOT_ARTICULATION,
+    articulation=articulation,
   )

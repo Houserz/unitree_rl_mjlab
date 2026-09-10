@@ -294,6 +294,42 @@ def feet_slip(
   return cost
 
 
+def high_speed_nonfoot_contact(
+  env: ManagerBasedRlEnv,
+  sensor_name: str,
+  command_name: str,
+  min_forward_speed: float,
+  free_force_threshold: float,
+  force_scale: float,
+) -> torch.Tensor:
+  """Penalize incipient non-foot contacts during high forward running.
+
+  ``illegal_contact`` remains the hard 10 N termination.  This term provides a
+  smooth cost below that threshold so the policy can learn to avoid lower-leg
+  grazing instead of discovering the failure only on the terminal step.  It is
+  inactive for medium, reverse, lateral, and standing commands.
+  """
+
+  sensor: ContactSensor = env.scene[sensor_name]
+  assert sensor.data.force is not None
+  if force_scale <= 0.0:
+    raise ValueError("force_scale must be positive")
+
+  force_magnitude = torch.norm(sensor.data.force, dim=-1)
+  max_nonfoot_force = torch.amax(force_magnitude, dim=1)
+  normalized_excess = torch.clamp(
+    (max_nonfoot_force - free_force_threshold) / force_scale,
+    min=0.0,
+  )
+  command = env.command_manager.get_command(command_name)
+  assert command is not None
+  active = (command[:, 0] >= min_forward_speed).float()
+  env.extras["log"]["Metrics/high_speed_nonfoot_force_max"] = torch.mean(
+    max_nonfoot_force * active
+  )
+  return torch.square(normalized_excess) * active
+
+
 def soft_landing(
   env: ManagerBasedRlEnv,
   sensor_name: str,
@@ -425,4 +461,3 @@ def stand_still(
             scale = (total_command <= command_threshold).float()
             reward *= scale
     return reward
-

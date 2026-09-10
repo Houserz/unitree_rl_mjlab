@@ -29,6 +29,8 @@ class TrainConfig:
   video_length: int = 200
   video_interval: int = 2000
   enable_nan_guard: bool = False
+  warm_start_from: str | None = None
+  """Load actor/critic from this checkpoint without optimizer or iteration state."""
   torchrunx_log_dir: str | None = None
   gpu_ids: list[int] | Literal["all"] | None = field(default_factory=lambda: [0])
 
@@ -95,6 +97,9 @@ def run_train(task_id: str, cfg: TrainConfig, log_dir: Path) -> None:
 
   log_root_path = log_dir.parent  # Go up from specific run dir to experiment dir.
 
+  if cfg.agent.resume and cfg.warm_start_from is not None:
+    raise ValueError("agent.resume and warm_start_from cannot be used together.")
+
   resume_path: Path | None = None
   if cfg.agent.resume:
       # Load checkpoint from local filesystem.
@@ -129,6 +134,20 @@ def run_train(task_id: str, cfg: TrainConfig, log_dir: Path) -> None:
   if resume_path is not None:
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     runner.load(str(resume_path))
+  elif cfg.warm_start_from is not None:
+    warm_start_path = Path(cfg.warm_start_from).expanduser().resolve()
+    if not warm_start_path.is_file():
+      raise FileNotFoundError(f"Warm-start checkpoint not found: {warm_start_path}")
+    print(
+      "[INFO]: Warm-starting actor/critic without optimizer or iteration state from: "
+      f"{warm_start_path}"
+    )
+    runner.load(
+      str(warm_start_path),
+      load_cfg={"actor": True, "critic": True},
+      strict=True,
+      map_location=device,
+    )
 
   # Only write config files from rank 0 to avoid race conditions.
   if rank == 0:

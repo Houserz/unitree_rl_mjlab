@@ -280,3 +280,115 @@ class UniformVelocityCommandCfg(CommandTermCfg):
         "The velocity command has heading commands active (heading_command=True) but "
         "the `ranges.heading` parameter is set to None."
       )
+
+
+@dataclass(kw_only=True)
+class VelocityCommandBucket:
+  """One weighted slice of a velocity-command distribution.
+
+  ``rel_heading_envs`` is bucket-local because the standard configuration uses
+  heading control in every environment.  Without this distinction, a sampled
+  high-speed straight command can still receive a large yaw command.
+  """
+
+  weight: float
+  lin_vel_x: tuple[float, float]
+  lin_vel_y: tuple[float, float]
+  ang_vel_z: tuple[float, float]
+  rel_heading_envs: float = 1.0
+  heading: tuple[float, float] | None = None
+
+
+class StratifiedVelocityCommand(UniformVelocityCommand):
+  """Velocity command with explicit weighted command buckets.
+
+  It preserves the command, observation, and reset semantics of
+  :class:`UniformVelocityCommand`; only the resampling distribution differs.
+  """
+
+  cfg: "StratifiedVelocityCommandCfg"
+
+  def __init__(self, cfg: "StratifiedVelocityCommandCfg", env: ManagerBasedRlEnv):
+    super().__init__(cfg, env)
+    weights = torch.tensor(
+      [bucket.weight for bucket in cfg.buckets],
+      dtype=torch.float32,
+      device=self.device,
+    )
+    if not torch.isfinite(weights).all() or torch.any(weights <= 0.0):
+      raise ValueError("Velocity command bucket weights must be finite and positive.")
+    self._bucket_weights = weights / torch.sum(weights)
+
+  def _resample_command(self, env_ids: torch.Tensor) -> None:
+    bucket_ids = torch.multinomial(
+      self._bucket_weights, len(env_ids), replacement=True
+    )
+
+    for bucket_id, bucket in enumerate(self.cfg.buckets):
+      bucket_env_ids = env_ids[bucket_ids == bucket_id]
+      if len(bucket_env_ids) == 0:
+        continue
+
+      # Advanced indexing returns a temporary tensor, so sample into a local
+      # tensor and assign it back rather than calling ``uniform_`` directly on
+      # the indexed view.
+      samples = torch.empty(
+        len(bucket_env_ids), 3, dtype=torch.float32, device=self.device
+      )
+      samples[:, 0].uniform_(*bucket.lin_vel_x)
+      samples[:, 1].uniform_(*bucket.lin_vel_y)
+      samples[:, 2].uniform_(*bucket.ang_vel_z)
+      self.vel_command_b[bucket_env_ids] = samples
+
+      if self.cfg.heading_command:
+        heading_range = bucket.heading or self.cfg.ranges.heading
+        assert heading_range is not None
+        self.heading_target[bucket_env_ids].uniform_(*heading_range)
+        self.is_heading_env[bucket_env_ids] = (
+          torch.rand(len(bucket_env_ids), device=self.device)
+          <= bucket.rel_heading_envs
+        )
+
+    self.vel_command_b[env_ids, :] *= (
+      torch.norm(self.vel_command_b[env_ids, :], dim=1) > 0.1
+    ).unsqueeze(1)
+    self.is_standing_env[env_ids] = (
+      torch.rand(len(env_ids), device=self.device) <= self.cfg.rel_standing_envs
+    )
+
+    init_vel_mask = (
+      torch.rand(len(env_ids), device=self.device) < self.cfg.init_velocity_prob
+    )
+    init_vel_env_ids = env_ids[init_vel_mask]
+    if len(init_vel_env_ids) > 0:
+      root_pos = self.robot.data.root_link_pos_w[init_vel_env_ids]
+      root_quat = self.robot.data.root_link_quat_w[init_vel_env_ids]
+      lin_vel_b = self.robot.data.root_link_lin_vel_b[init_vel_env_ids]
+      lin_vel_b[:, :2] = self.vel_command_b[init_vel_env_ids, :2]
+      root_lin_vel_w = quat_apply(root_quat, lin_vel_b)
+      root_ang_vel_b = self.robot.data.root_link_ang_vel_b[init_vel_env_ids]
+      root_ang_vel_b[:, 2] = self.vel_command_b[init_vel_env_ids, 2]
+      root_state = torch.cat(
+        [root_pos, root_quat, root_lin_vel_w, root_ang_vel_b], dim=-1
+      )
+      self.robot.write_root_state_to_sim(root_state, init_vel_env_ids)
+
+
+@dataclass(kw_only=True)
+class StratifiedVelocityCommandCfg(UniformVelocityCommandCfg):
+  """Configuration for :class:`StratifiedVelocityCommand`."""
+
+  buckets: tuple[VelocityCommandBucket, ...]
+
+  def build(self, env: ManagerBasedRlEnv) -> StratifiedVelocityCommand:
+    return StratifiedVelocityCommand(self, env)
+
+  def __post_init__(self):
+    super().__post_init__()
+    if not self.buckets:
+      raise ValueError("StratifiedVelocityCommandCfg requires at least one bucket.")
+    for bucket in self.buckets:
+      if bucket.weight <= 0.0:
+        raise ValueError("Velocity command bucket weight must be positive.")
+      if not 0.0 <= bucket.rel_heading_envs <= 1.0:
+        raise ValueError("Bucket rel_heading_envs must be in [0, 1].")

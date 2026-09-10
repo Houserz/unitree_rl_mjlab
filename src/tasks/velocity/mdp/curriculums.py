@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, TypedDict, cast
 
 import torch
@@ -7,7 +8,10 @@ import torch
 from mjlab.entity import Entity
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 
-from .velocity_command import UniformVelocityCommandCfg
+from .velocity_command import (
+  StratifiedVelocityCommandCfg,
+  UniformVelocityCommandCfg,
+)
 
 if TYPE_CHECKING:
   from mjlab.envs import ManagerBasedRlEnv
@@ -25,6 +29,13 @@ class VelocityStage(TypedDict):
 class RewardWeightStage(TypedDict):
   step: int
   weight: float
+
+
+class LateralBucketStage(TypedDict):
+  """One range expansion for a stratified lateral-command bucket."""
+
+  step: int
+  lin_vel_y: tuple[float, float]
 
 
 def terrain_levels_vel(
@@ -105,3 +116,37 @@ def reward_weight(
     if env.common_step_counter > stage["step"]:
       reward_term_cfg.weight = stage["weight"]
   return torch.tensor([reward_term_cfg.weight])
+
+
+def stratified_lateral_range(
+  env: ManagerBasedRlEnv,
+  env_ids: torch.Tensor,
+  command_name: str,
+  lateral_bucket_index: int,
+  stages: list[LateralBucketStage],
+) -> dict[str, torch.Tensor]:
+  """Expand only one lateral bucket while retaining all other bucket weights.
+
+  A wide uniform command box made high-forward straight commands rare once
+  lateral range reached ``±1``.  This curriculum preserves dedicated forward
+  buckets and changes only the range of the lateral-training bucket.
+  """
+
+  del env_ids  # The curriculum is global, as are the existing command stages.
+  command_term = env.command_manager.get_term(command_name)
+  assert command_term is not None
+  cfg = cast(StratifiedVelocityCommandCfg, command_term.cfg)
+  if not 0 <= lateral_bucket_index < len(cfg.buckets):
+    raise ValueError("lateral_bucket_index is outside the configured buckets")
+
+  lateral_range: tuple[float, float] | None = None
+  for stage in stages:
+    if env.common_step_counter > stage["step"]:
+      lateral_range = stage["lin_vel_y"]
+  if lateral_range is not None:
+    buckets = list(cfg.buckets)
+    buckets[lateral_bucket_index] = replace(
+      buckets[lateral_bucket_index], lin_vel_y=lateral_range
+    )
+    cfg.buckets = tuple(buckets)
+  return {}
