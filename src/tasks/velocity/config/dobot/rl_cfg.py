@@ -77,34 +77,3 @@ def dobot_rover_kp25_kd13_lateral_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
   # command distribution changes, and warm-start actor/critic only.
   cfg.algorithm.learning_rate = 2.5e-4
   return cfg
-
-
-def dobot_rover_high_speed_retention_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
-  """Conservative actor/critic warm-start configuration for ``model_4500``."""
-
-  cfg = dobot_rover_ppo_runner_cfg()
-  cfg.max_iterations = 500
-  cfg.save_interval = 25
-  cfg.run_name = "high_speed_retention_from_model4500"
-  cfg.logger = "tensorboard"
-  cfg.upload_model = False
-  # This task is warm-started without the old PPO optimizer state.  A smaller
-  # initial rate bounds updates while the command distribution changes.
-  cfg.algorithm.learning_rate = 2.5e-4
-  return cfg
-
-
-def dobot_rover_high_speed_safe_retention_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
-  """Runner configuration for contact-safe high-speed retention."""
-
-  cfg = dobot_rover_high_speed_retention_ppo_runner_cfg()
-  cfg.run_name = "high_speed_safe_retention_from_model4500"
-  return cfg
-
-
-def dobot_rover_high_speed_balanced_retention_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
-  """Runner configuration for the medium/high balanced retention A/B."""
-
-  cfg = dobot_rover_high_speed_safe_retention_ppo_runner_cfg()
-  cfg.run_name = "high_speed_balanced_retention_from_model4500"
-  return cfg
