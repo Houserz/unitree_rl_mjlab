@@ -248,3 +248,14 @@ python scripts/train.py Dobot-Rover-Flat-Kp25Kd1p3 --enable-nan-guard True
 
 另外保留 `Dobot-Rover-Flat`（Kp10 历史对照）和
 `Dobot-Rover-Flat-Kp25Kd1p3-LateralCurriculum`（Kp25 横移续训）。
+
+
+### Dobot 测试
+
+```bash
+  cd /home/houser/code/unitree_all/unitree_rl_mjlab
+  conda activate unitree_rl_mjlab
+
+  RUN=logs/rsl_rl/dobot_rover_identified/2026-09-10_22-14-02_best172_no_dc_scratch
+  python scripts/play.py Dobot-Rover-Flat-Identified --checkpoint-file "$RUN/model_4500.pt" --num-envs 1 --viewer viser
+```

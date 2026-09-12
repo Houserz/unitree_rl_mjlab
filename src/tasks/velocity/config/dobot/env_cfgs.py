@@ -235,6 +235,17 @@ def dobot_rover_flat_kp25_kd13_env_cfg(play: bool = False) -> ManagerBasedRlEnvC
   return cfg
 
 
+def dobot_rover_flat_identified_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
+  """Kp25 curriculum with the editable, per-joint PACE motor parameters."""
+  cfg = dobot_rover_flat_kp25_kd13_env_cfg(play=play)
+  cfg.scene.entities = {"robot": get_dobot_robot_cfg(identified=True)}
+  # Fixed identified calibration replaces the generic startup randomization.
+  cfg.events.pop("encoder_bias", None)
+  for group in ("actor", "critic"):
+    cfg.observations[group].terms["joint_pos"].params["biased"] = True
+  return cfg
+
+
 def dobot_rover_flat_kp25_kd13_lateral_curriculum_env_cfg(
   play: bool = False,
 ) -> ManagerBasedRlEnvCfg:

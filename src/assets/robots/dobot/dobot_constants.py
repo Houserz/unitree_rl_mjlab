@@ -149,15 +149,44 @@ def get_dobot_robot_cfg(
   *,
   stiffness: float | None = None,
   damping: float | None = None,
+  identified: bool = False,
 ) -> EntityCfg:
   """Return a fresh Dobot Rover configuration, optionally with one PD pair.
 
   The default preserves the established 10/1 actuator baseline.  Supplying a
   pair creates fresh actuator configuration objects, so a PD experiment cannot
   mutate the baseline task through the module-level articulation singleton.
+  ``identified=True`` instead loads the per-joint values and PD gains from
+  motor_parameters.py for the separate identified task.
   """
 
   articulation = DOBOT_ARTICULATION
+  if identified:
+    from . import motor_parameters as motors
+    from .identified_actuator import IdentifiedActuatorCfg
+
+    if stiffness is not None or damping is not None:
+      raise ValueError("Edit identified PD gains in motor_parameters.py")
+    if set(motors.JOINT_PARAMETERS) != set(DOBOT_JOINT_ORDER):
+      raise ValueError("motor_parameters must name exactly the 12 Dobot joints")
+    if any(len(values) != 4 for values in motors.JOINT_PARAMETERS.values()):
+      raise ValueError("Each joint needs armature, viscous damping, friction, bias")
+    articulation = replace(
+      DOBOT_ARTICULATION,
+      actuators=tuple(
+        IdentifiedActuatorCfg(
+          target_names_expr=(name,),
+          stiffness=motors.KP, damping=motors.KD,
+          effort_limit=limit,
+          armature=motors.JOINT_PARAMETERS[name][0],
+          viscous_damping=motors.JOINT_PARAMETERS[name][1],
+          frictionloss=motors.JOINT_PARAMETERS[name][2],
+          encoder_bias=motors.JOINT_PARAMETERS[name][3],
+          delay_steps=motors.DELAY_STEPS,
+        )
+        for name, limit in zip(DOBOT_JOINT_ORDER, DOBOT_EFFORT_LIMITS, strict=True)
+      ),
+    )
   if stiffness is not None or damping is not None:
     if stiffness is None or damping is None:
       raise ValueError("stiffness and damping must be supplied together")

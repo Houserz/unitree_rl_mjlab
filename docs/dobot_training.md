@@ -1,6 +1,42 @@
 # Dobot 训练入口与历史版本
 
-整理日期：2026-09-10。当前保留 3 个任务；本次整理没有重新完成一轮正式训练。
+整理日期：2026-09-10。当前保留 3 个原有任务，另增 1 个辨识参数任务；没有重新完成一轮正式训练。
+
+## 经常修改每个电机的辨识参数
+
+统一编辑 `src/assets/robots/dobot/motor_parameters.py`，每个关节一行，按名称匹配。
+四列依次是 `armature`、`viscous_damping`、`frictionloss`、`encoder_bias`。
+初值直接提取自 `params_best172.pt` 的完整 float32 数值，来源与 SHA256 记在文件头。
+共用的 `DELAY_STEPS=4`、`KP=25`、`KD=1.3` 也在同一文件。
+修改后重启训练或 play 生效；不需要修改 XML，也不需要运行时读取原始 `.pt`。
+
+新任务为 `Dobot-Rover-Flat-Identified`，继承 Kp25 的课程和奖励。
+惯量、被动黏性阻尼、摩擦写入各关节的 MuJoCo 参数；黏性阻尼与 PD 的 Kd 分开。
+执行器复用 MJLab 原生理想 PD，按固定 23/23/55 N·m 上限裁剪力矩，
+再对输出力矩延迟 4 个 2.5 ms 物理步。按用户要求移除了训练端的
+20 rad/s DC 力矩—速度限幅；速度仍通过 PD 的 Kd 和被动阻尼影响力矩。
+该 20 rad/s 原本是辨识端固定的电机模型假设，不属于辨识得到的 49 个参数。
+辨识项目未修改；去除限幅后训练模型与拟合模型存在差异，原辨识误差不能直接沿用。
+延迟不是 4 个策略步，也不是目标角延迟。每次 reset 清除该环境的历史，首个力矩
+填充不足的历史，沿用辨识端的 DelayBuffer 语义；不是前 4 步强制输出零。
+
+偏差遵循 `q_encoder = q_sim - bias`：actor/critic 的关节角读取编码器坐标，
+位置目标通过 MJLab 转成 `q_target_sim = q_target_encoder + bias`，不会重复补偿。
+该任务移除通用的随机 encoder_bias 事件。其余状态、几何、关节限位仍用仿真坐标。
+初始化物理姿态仍沿用原模型，因此初始编码器读数会带这组偏差。
+
+```bash
+conda activate unitree_rl_mjlab
+python scripts/check_dobot_identified.py
+# 需要训练时手动运行：
+python scripts/train.py Dobot-Rover-Flat-Identified --enable-nan-guard True
+```
+
+日志独立保存在 `logs/rsl_rl/dobot_rover_identified/<时间>_best172/`。
+实际展开的每关节执行器参数随训练配置保存；后续更换辨识版本可用
+`--agent.run-name <版本名>` 区分。本次仅完成参数接入与离线回归检查，未启动训练。
+原有任务继续使用原参数；47/74/12 维度保持一致，但新任务包含编码器偏差与新动力学，
+不能仅凭维度相同认定旧模型或部署配置兼容，也不表示第 172 代已通过实机验收。
 
 ## 从零完整训练 Kp25/Kd1.3
 
