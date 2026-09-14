@@ -256,6 +256,6 @@ python scripts/train.py Dobot-Rover-Flat-Kp25Kd1p3 --enable-nan-guard True
   cd /home/houser/code/unitree_all/unitree_rl_mjlab
   conda activate unitree_rl_mjlab
 
-  RUN=logs/rsl_rl/dobot_rover_identified/2026-09-10_22-14-02_best172_no_dc_scratch
-  python scripts/play.py Dobot-Rover-Flat-Identified --checkpoint-file "$RUN/model_4500.pt" --num-envs 1 --viewer viser
+  MODEL=logs/rsl_rl/dobot_rover_velocity/2026-09-12_18-38-13_kp25_kd1p3_calf_contact_allowed/model_4500.pt
+  python scripts/play.py Dobot-Rover-Flat-Kp25Kd1p3 --checkpoint-file "$MODEL" --num-envs 1 --viewer viser
 ```

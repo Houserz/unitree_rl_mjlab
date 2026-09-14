@@ -129,8 +129,8 @@ def _dobot_rover_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   cfg.rewards["foot_clearance"].params["asset_cfg"].site_names = site_names
   cfg.rewards["foot_slip"].params["asset_cfg"].site_names = site_names
 
-  # Phase one intentionally keeps the Go2 task semantic: any non-foot ground
-  # contact over 10 N terminates the episode. This is not an Isaac collision mapping.
+  # Any non-foot ground contact over 10 N terminates the episode by default.
+  # Individual task variants may exclude additional geoms below.
   cfg.terminations["illegal_contact"] = TerminationTermCfg(
     func=mdp.illegal_contact,
     params={"sensor_name": nonfoot_ground_cfg.name, "force_threshold": 10.0},
@@ -215,14 +215,28 @@ def dobot_rover_flat_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   return cfg
 
 
-def dobot_rover_flat_kp25_kd13_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
+def dobot_rover_flat_kp25_kd13_env_cfg(
+  play: bool = False, *, allow_calf_contact: bool = True,
+) -> ManagerBasedRlEnvCfg:
   """From-scratch 25/1.3 baseline; retain lateral range at ±0.75.
 
   The 4501-iteration historical run never reached the final ±1.0 stage.
   Remove that unused stage in v1 so a longer run cannot enter it silently.
+  Calf ground contact is allowed here; derived tasks opt out explicitly.
   """
 
   cfg = dobot_rover_flat_env_cfg(play=play)
+  if allow_calf_contact:
+    for sensor in cfg.scene.sensors or ():
+      if isinstance(sensor, ContactSensorCfg) and sensor.name == "nonfoot_ground_touch":
+        # Relax only this task's contact rule; preserve physical collisions.
+        sensor.primary.exclude = (
+          *DOBOT_FOOT_GEOM_NAMES,
+          "FL_calf_collision",
+          "FR_calf_collision",
+          "RL_calf_collision",
+          "RR_calf_collision",
+        )
   cfg.scene.entities = {
     "robot": get_dobot_robot_cfg(stiffness=25.0, damping=1.3)
   }
@@ -236,8 +250,13 @@ def dobot_rover_flat_kp25_kd13_env_cfg(play: bool = False) -> ManagerBasedRlEnvC
 
 
 def dobot_rover_flat_identified_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
-  """Kp25 curriculum with the editable, per-joint PACE motor parameters."""
-  cfg = dobot_rover_flat_kp25_kd13_env_cfg(play=play)
+  """Kp25 curriculum with the editable, per-joint PACE motor parameters.
+
+  Uses the same contact rule as ``Dobot-Rover-Flat-Kp25Kd1p3``: the four calf
+  geoms are excluded from the non-foot ground contact sensor, so calf ground
+  contact is allowed and does not terminate the episode.
+  """
+  cfg = dobot_rover_flat_kp25_kd13_env_cfg(play=play, allow_calf_contact=True)
   cfg.scene.entities = {"robot": get_dobot_robot_cfg(identified=True)}
   # Fixed identified calibration replaces the generic startup randomization.
   cfg.events.pop("encoder_bias", None)
@@ -257,7 +276,7 @@ def dobot_rover_flat_kp25_kd13_lateral_curriculum_env_cfg(
   iterations.  Dedicated medium/high-forward buckets are never diluted.
   """
 
-  cfg = dobot_rover_flat_kp25_kd13_env_cfg(play=play)
+  cfg = dobot_rover_flat_kp25_kd13_env_cfg(play=play, allow_calf_contact=False)
   initial_lateral = 1.0 if play else 0.75
   cfg.commands["twist"] = StratifiedVelocityCommandCfg(
     entity_name="robot",
