@@ -1,5 +1,7 @@
 """Dobot Rover velocity environment configurations."""
 
+import math
+
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.envs import mdp as envs_mdp
 from mjlab.envs.mdp.actions import JointPositionActionCfg
@@ -99,9 +101,8 @@ def _dobot_rover_rough_env_cfg(play: bool = False) -> ManagerBasedRlEnvCfg:
   ].site_names = site_names
 
   cfg.events["foot_friction"].params["asset_cfg"].geom_names = geom_names
-  # Keep the effective foot friction equal to the Dobot v2 MuJoCo default instead
-  # of applying the shared Unitree task's 0.3--1.6 startup randomization.
-  cfg.events["foot_friction"].params["ranges"] = (1.8, 1.8)
+  # Randomize sliding friction at startup; all four feet share each env's value.
+  cfg.events["foot_friction"].params["ranges"] = (0.8, 1.8)
   cfg.events["base_com"].params["asset_cfg"].body_names = ("link_trunk",)
 
   cfg.rewards["pose"].params["std_standing"] = {
@@ -246,6 +247,35 @@ def dobot_rover_flat_kp25_kd13_env_cfg(
     cfg.curriculum["command_vel"].params["velocity_stages"] = [
       stage for stage in stages if stage["step"] < 120000
     ]
+  return cfg
+
+
+def dobot_rover_flat_kp25_kd13_task_rand_v1_env_cfg(
+  play: bool = False,
+) -> ManagerBasedRlEnvCfg:
+  """Kp25 baseline with task randomization active from the first training step.
+
+  Play retains randomized starts and commands, but inherits the baseline's
+  disabled pushes and actor noise. Only the existing velocity curriculum is used.
+  """
+  cfg = dobot_rover_flat_kp25_kd13_env_cfg(play=play)
+  tilt = math.radians(3.0)
+  cfg.events["reset_base"].params["pose_range"].update(
+    roll=(-tilt, tilt), pitch=(-tilt, tilt),
+    # Fixed clearance for tilted starts and joint offsets, not height DR.
+    z=(0.03, 0.03),
+  )
+  cfg.events["reset_base"].params["velocity_range"].update(
+    x=(-0.15, 0.15), y=(-0.15, 0.15), yaw=(-0.2, 0.2),
+  )
+  cfg.events["reset_robot_joints"].params["position_range"] = (-0.03, 0.03)
+  twist_cmd = cfg.commands["twist"]
+  assert isinstance(twist_cmd, MjlabUniformVelocityCommandCfg)
+  twist_cmd.resampling_time_range = (2.0, 8.0)
+  twist_cmd.rel_standing_envs = 0.10
+  twist_cmd.rel_heading_envs = 0.50
+  if not play:
+    cfg.events["push_robot"].interval_range_s = (3.0, 8.0)
   return cfg
 
 

@@ -187,3 +187,34 @@ Kp25 从零入口完成 1 轮 × 16 环境的冒烟训练，无 checkpoint 加�
 ```bash
 git worktree add --detach ../unitree_rl_mjlab_history archive/dobot-before-cleanup-2026-09-10
 ```
+
+## TaskRandV1：任务随机化从零训练
+
+```bash
+conda activate unitree_rl_mjlab
+cd /home/houser/code/unitree_all/unitree_rl_mjlab
+python scripts/train.py Dobot-Rover-Flat-Kp25Kd1p3-TaskRandV1 \
+  --env.scene.num-envs 4096 \
+  --agent.seed 42 \
+  --agent.max-iterations 4501 \
+  --agent.resume False \
+  --enable-nan-guard True
+```
+
+输出目录：`logs/rsl_rl/dobot_rover_velocity/<时间>_kp25_kd1p3_task_rand_v1/`。
+不加载 Identified 参数或 checkpoint。沿用普通 Kp25/Kd1.3 的 PPO、速度课程、
+奖励、平地和允许小腿触地规则，以下任务随机从训练开始全程启用：
+
+- 初始 roll/pitch 各 ±3°，关节位置相对默认值 ±0.03 rad。
+- 初始世界坐标水平速度各 ±0.15 m/s，yaw 角速度 ±0.2 rad/s。
+- 出生高度固定比基线提高 3 cm，避免姿态与关节扰动造成脚底穿地；不随机高度。
+- 指令保持 2–8 秒，10% 站立；航向跟踪概率 50%，其余直接跟踪 yaw 角速度。
+  站立采样与航向模式采样独立，站立样本最终命令为零。
+- 推扰间隔 3–8 秒，沿用基线速度增量幅度。
+
+已有摩擦 0.8–1.8、质心和 encoder bias 随机均继承基线，不新增本体随机。
+play 保留随机起点与命令；按基线惯例关闭推扰、actor 噪声和速度课程，
+因此 play 不等于完整扰动评测。
+
+CPU 检查：`python scripts/check_dobot_task_rand.py`（任务隔离、play 配置、
+全部 16384 个姿态/关节边界组合与 4096 个内部样本的初始脚底间隙）。
