@@ -299,16 +299,16 @@ def dobot_rover_kp25_kd13_task_rand_v2_env_cfg(
       "flat": BoxFlatTerrainCfg(proportion=0.7),
       "slope": HfPyramidSlopedTerrainCfg(
         proportion=0.1, slope_range=(0.0, math.tan(math.radians(3.0))),
-        platform_width=2.0, border_width=0.25, vertical_scale=0.0005,
+        platform_width=2.0, border_width=0.25, vertical_scale=0.0005, horizontal_scale=0.20,
       ),
       "slope_inv": HfPyramidSlopedTerrainCfg(
         proportion=0.1, slope_range=(0.0, math.tan(math.radians(3.0))),
         platform_width=2.0, border_width=0.25, vertical_scale=0.0005,
-        inverted=True,
+        inverted=True, horizontal_scale=0.20,
       ),
       "small_undulations": HfPerlinNoiseTerrainCfg(
         proportion=0.1, height_range=(0.001, 0.01),
-        octaves=2, scale=2.0, border_width=0.25,
+        octaves=2, scale=2.0, border_width=0.25, resolution=0.20,
       ),
     },
   )
