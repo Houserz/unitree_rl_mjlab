@@ -218,3 +218,38 @@ play 保留随机起点与命令；按基线惯例关闭推扰、actor 噪声和
 
 CPU 检查：`python scripts/check_dobot_task_rand.py`（任务隔离、play 配置、
 全部 16384 个姿态/关节边界组合与 4096 个内部样本的初始脚底间隙）。
+
+## TaskRandV2：轻微地形课程
+
+继承链：普通 `Dobot-Rover-Flat-Kp25Kd1p3` → TaskRandV1 →
+`Dobot-Rover-Kp25Kd1p3-TaskRandV2`。V1 的起点、指令、推扰随机和固定
+3 cm 出生高度余量均保留，不加载 Identified，不新增持续外力或本体随机。
+
+```bash
+conda activate unitree_rl_mjlab
+cd /home/houser/code/unitree_all/unitree_rl_mjlab
+python scripts/train.py Dobot-Rover-Kp25Kd1p3-TaskRandV2 \
+  --env.scene.num-envs 4096 \
+  --agent.seed 42 \
+  --agent.max-iterations 4501 \
+  --agent.resume False \
+  --enable-nan-guard True
+```
+
+输出：`logs/rsl_rl/dobot_rover_velocity/<时间>_kp25_kd1p3_task_rand_v2/`。
+这是独立从零训练；配置继承不等于加载 V1 权重。
+
+- 固定 seed=42 的 5 行 × 10 列地形，每块 8 m × 8 m。7 列平地、1 列
+  正坡、1 列反坡、1 列平滑 Perlin 起伏；环境均匀分配到各列，约为 70/20/10%。
+- 坡度上限 3°（配置存 rise/run，即 tan(3°)），中心有 2 m 平台用于出生。
+- 起伏总高度范围随难度从 1 mm 增至 10 mm；两个 Perlin octave，避免碎石式台阶。
+- 初始全部位于第 0 行，难度接近零。复用现有 `terrain_levels_vel` 距离启发式：
+  离出生原点超过 4 m 升级，距离低于当前指令速度 × 20 s × 0.5 时降级。
+  这不是完整回合跟踪质量判定；转弯、站立和回头可能影响等级。
+- 每行难度在对应区间内采样，所以 3°/10 mm 是范围上限，不保证生成恰好上限。
+  升级到最高行以上时沿用框架的随机重分配等级行为。
+- 原速度课程和奖励权重不变。V2 将 critic 足高与抬脚奖励改为脚下地面的相对高度，
+  通过四个单射线传感器计算；actor 不接收这些传感器，仍为 47 维，critic 仍为 74 维。
+- play 关闭课程、推扰和 actor 噪声，从全部地形等级中采样。V1 和原 Kp25 仍为平地。
+
+验证：`python scripts/check_dobot_task_rand_v2.py --step`。

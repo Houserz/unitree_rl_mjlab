@@ -51,6 +51,11 @@ def terrain_levels_vel(
   terrain_generator = terrain.cfg.terrain_generator
   assert terrain_generator is not None
 
+  # The first reset happens before any episode has run. World-origin model
+  # poses must not be scored against the newly assigned terrain origins.
+  if env.common_step_counter == 0:
+    return torch.mean(terrain.terrain_levels.float())
+
   command = env.command_manager.get_command(command_name)
   assert command is not None
 

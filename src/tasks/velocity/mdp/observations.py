@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import torch
 
 from mjlab.entity import Entity
+from mjlab.envs.mdp.observations import height_scan
 from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.sensor import ContactSensor
 
@@ -15,8 +16,11 @@ _DEFAULT_ASSET_CFG = SceneEntityCfg("robot")
 
 
 def foot_height(
-  env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG
+  env: ManagerBasedRlEnv, asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+  sensor_names: tuple[str, ...] | None = None,
 ) -> torch.Tensor:
+  if sensor_names is not None:
+    return torch.cat([height_scan(env, name) for name in sensor_names], dim=1)
   asset: Entity = env.scene[asset_cfg.name]
   return asset.data.site_pos_w[:, asset_cfg.site_ids, 2]  # (num_envs, num_sites)
 
@@ -52,4 +56,3 @@ def phase(env: ManagerBasedRlEnv, period: float, command_name: str) -> torch.Ten
     stand_mask = torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) < 0.1
     phase = torch.where(stand_mask.unsqueeze(1), torch.zeros_like(phase), phase)
     return phase
-

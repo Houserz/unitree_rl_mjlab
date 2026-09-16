@@ -7,7 +7,9 @@ from mjlab.envs import mdp as envs_mdp
 from mjlab.envs.mdp.actions import JointPositionActionCfg
 from mjlab.managers import CurriculumTermCfg, TerminationTermCfg
 from mjlab.managers.event_manager import EventTermCfg
-from mjlab.sensor import ContactMatch, ContactSensorCfg, RayCastSensorCfg
+from mjlab.sensor import ContactMatch, ContactSensorCfg, GridPatternCfg, ObjRef, RayCastSensorCfg
+from mjlab.terrains import BoxFlatTerrainCfg, HfPerlinNoiseTerrainCfg, HfPyramidSlopedTerrainCfg
+from mjlab.terrains.terrain_generator import TerrainGeneratorCfg
 from mjlab.tasks.velocity.mdp import UniformVelocityCommandCfg as MjlabUniformVelocityCommandCfg
 
 from src.assets.robots import get_dobot_robot_cfg
@@ -276,6 +278,53 @@ def dobot_rover_flat_kp25_kd13_task_rand_v1_env_cfg(
   twist_cmd.rel_heading_envs = 0.50
   if not play:
     cfg.events["push_robot"].interval_range_s = (3.0, 8.0)
+  return cfg
+
+
+def dobot_rover_kp25_kd13_task_rand_v2_env_cfg(
+  play: bool = False,
+) -> ManagerBasedRlEnvCfg:
+  """Kp25 -> TaskRandV1 -> mild terrain curriculum, with a blind 47-D actor."""
+  cfg = dobot_rover_flat_kp25_kd13_task_rand_v1_env_cfg(play=play)
+  assert cfg.scene.terrain is not None
+  cfg.scene.terrain.terrain_type = "generator"
+  cfg.scene.terrain.max_init_terrain_level = None if play else 0
+  cfg.scene.terrain.terrain_generator = TerrainGeneratorCfg(
+    seed=42, size=(8.0, 8.0), border_width=20.0,
+    num_rows=5, num_cols=10, curriculum=True,
+    sub_terrains={
+      "flat": BoxFlatTerrainCfg(proportion=0.7),
+      "slope": HfPyramidSlopedTerrainCfg(
+        proportion=0.1, slope_range=(0.0, math.tan(math.radians(3.0))),
+        platform_width=2.0, border_width=0.25, vertical_scale=0.0005,
+      ),
+      "slope_inv": HfPyramidSlopedTerrainCfg(
+        proportion=0.1, slope_range=(0.0, math.tan(math.radians(3.0))),
+        platform_width=2.0, border_width=0.25, vertical_scale=0.0005,
+        inverted=True,
+      ),
+      "small_undulations": HfPerlinNoiseTerrainCfg(
+        proportion=0.1, height_range=(0.001, 0.01),
+        octaves=2, scale=2.0, border_width=0.25,
+      ),
+    },
+  )
+  if not play:
+    cfg.curriculum["terrain_levels"] = CurriculumTermCfg(
+      func=mdp.terrain_levels_vel, params={"command_name": "twist"},
+    )
+  # Four downward rays serve only the critic and clearance reward, not the actor.
+  sensor_names = tuple(f"foot_terrain_{i}" for i in range(4))
+  cfg.scene.sensors = (cfg.scene.sensors or ()) + tuple(
+    RayCastSensorCfg(
+      name=name, frame=ObjRef(type="site", name=site, entity="robot"),
+      pattern=GridPatternCfg(size=(0.0, 0.0), resolution=0.1),
+      ray_alignment="world", max_distance=2.0, include_geom_groups=(0,),
+    )
+    for name, site in zip(sensor_names, DOBOT_FOOT_SITE_NAMES, strict=True)
+  )
+  cfg.observations["critic"].terms["foot_height"].params["sensor_names"] = sensor_names
+  cfg.rewards["foot_clearance"].params["sensor_names"] = sensor_names
   return cfg
 
 
