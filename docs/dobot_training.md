@@ -253,3 +253,38 @@ python scripts/train.py Dobot-Rover-Kp25Kd1p3-TaskRandV2 \
 - play 关闭课程、推扰和 actor 噪声，从全部地形等级中采样。V1 和原 Kp25 仍为平地。
 
 验证：`python scripts/check_dobot_task_rand_v2.py --step`。
+
+## TaskRandV3：V2 地形 + 持续水平外力
+
+继承普通 Kp25 → V1 → V2 → `Dobot-Rover-Kp25Kd1p3-TaskRandV3`。
+保留 V2 地形课程、V1 起点和指令随机、原速度课程、47 维 actor 和 PPO 设置。
+每次 reset 独立选择本回合扰动类型：70% 持续外力、30% V1 瞬时速度推扰，
+所有组均在 V2 混合地形上训练。同一回合不叠加两种推扰。
+
+- 持续外力作用于躯干质心，世界坐标水平面均匀随机方向，竖直力和额外扭矩为零。
+- 持续 0.1–0.4 s（向上取整到 20 ms 策略步），结束后冷却 3–7 s。
+  出生后也先冷却，不立即施力；回合结束清除外力并重新分组。
+- 按 `F = 17.2352 kg × Δv / 实际持续时间` 定标，合力上限 50 N。
+  Δv 是自由质量的等效冲量指标，不是接触地面时实际获得的速度变化。
+  触发限幅时实际等效 Δv 会低于采样目标。
+- 0–500 轮 Δv=0.05–0.15 m/s；500–2000 轮线性扩展；2000 轮以后
+  Δv=0.15–0.40 m/s。课程使用环境步计数 12000–48000，按默认每轮 24 步换算；
+  更改 `num_steps_per_env` 会改变按训练轮数计算的进度。
+- 瞬时推扰组保留 V1 的幅度和 3–8 s 间隔。V2 和 V1 的事件配置不变。
+- play 按既有惯例关闭所有推扰和 actor 噪声，不代表完整鲁棒性评测。
+
+```bash
+conda activate unitree_rl_mjlab
+cd /home/houser/code/unitree_all/unitree_rl_mjlab
+python scripts/train.py Dobot-Rover-Kp25Kd1p3-TaskRandV3 \
+  --env.scene.num-envs 4096 \
+  --agent.seed 42 \
+  --agent.max-iterations 4501 \
+  --agent.resume False \
+  --enable-nan-guard True
+```
+
+输出目录：`logs/rsl_rl/dobot_rover_velocity/<时间>_kp25_kd1p3_task_rand_v3/`。
+独立从零训练，不加载 V1/V2 权重或 Identified。
+验证：`python scripts/check_dobot_task_rand_v3.py --step`，覆盖课程边界、
+回合分组互斥、50 N 限幅、离散冲量、到期清零、局部 reset，以及完整地形仿真。

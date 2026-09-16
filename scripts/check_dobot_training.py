@@ -18,6 +18,7 @@ from src.tasks.velocity.mdp.curriculums import commands_vel, stratified_lateral_
 
 def main() -> None:
   expected_tasks = {
+    "Dobot-Rover-Kp25Kd1p3-TaskRandV3",
     "Dobot-Rover-Kp25Kd1p3-TaskRandV2",
     "Dobot-Rover-Flat",
     "Dobot-Rover-Flat-Identified",

@@ -7,6 +7,7 @@ from mjlab.envs import mdp as envs_mdp
 from mjlab.envs.mdp.actions import JointPositionActionCfg
 from mjlab.managers import CurriculumTermCfg, TerminationTermCfg
 from mjlab.managers.event_manager import EventTermCfg
+from mjlab.managers.scene_entity_config import SceneEntityCfg
 from mjlab.sensor import ContactMatch, ContactSensorCfg, GridPatternCfg, ObjRef, RayCastSensorCfg
 from mjlab.terrains import BoxFlatTerrainCfg, HfPerlinNoiseTerrainCfg, HfPyramidSlopedTerrainCfg
 from mjlab.terrains.terrain_generator import TerrainGeneratorCfg
@@ -19,6 +20,7 @@ from src.assets.robots.dobot.dobot_constants import (
   DOBOT_FOOT_GEOM_NAMES,
   DOBOT_FOOT_SITE_NAMES,
   DOBOT_PHYSICS_DT,
+  DOBOT_TOTAL_MASS,
 )
 from src.tasks.velocity.mdp import (
   StratifiedVelocityCommandCfg,
@@ -26,6 +28,7 @@ from src.tasks.velocity.mdp import (
   VelocityCommandBucket,
 )
 import src.tasks.velocity.mdp as mdp
+from src.tasks.velocity.mdp.task_disturbances import TaskRandV3Disturbance
 from src.tasks.velocity.velocity_env_cfg import make_velocity_env_cfg
 
 
@@ -325,6 +328,24 @@ def dobot_rover_kp25_kd13_task_rand_v2_env_cfg(
   )
   cfg.observations["critic"].terms["foot_height"].params["sensor_names"] = sensor_names
   cfg.rewards["foot_clearance"].params["sensor_names"] = sensor_names
+  return cfg
+
+
+def dobot_rover_kp25_kd13_task_rand_v3_env_cfg(
+  play: bool = False,
+) -> ManagerBasedRlEnvCfg:
+  """V2 terrain plus episode-exclusive continuous forces / V1 pushes."""
+  cfg = dobot_rover_kp25_kd13_task_rand_v2_env_cfg(play=play)
+  if not play:
+    push = cfg.events.pop("push_robot")
+    cfg.events["task_disturbance"] = EventTermCfg(
+      func=TaskRandV3Disturbance, mode="step",
+      params={
+        "asset_cfg": SceneEntityCfg("robot", body_names=("link_trunk",)),
+        "mass": DOBOT_TOTAL_MASS,
+        "push_velocity_range": push.params["velocity_range"],
+      },
+    )
   return cfg
 
 
